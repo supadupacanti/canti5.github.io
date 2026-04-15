@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Historica — Age of Industry</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Crimson+Pro:ital,wght@0,400;0,600;1,400&family=Special+Elite&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #1a1008; --parchment: #f5edd6; --parchment-dark: #e8d9b5; --parchment-deeper: #d4c090;
+    --sepia: #8b5e3c; --sepia-light: #c49a6c; --crimson: #8b1a1a; --gold: #c9920a;
+    --gold-light: #e8b84b; --teal-dark: #1a4a4a; --correct: #2d5a2d; --wrong: #8b1a1a; --shadow: rgba(26,16,8,0.25);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Crimson Pro', serif; background: var(--parchment); color: var(--ink); min-height: 100vh; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='400' height='400' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E"); }
+  .screen { display: none; min-height: 100vh; padding: 20px; flex-direction: column; align-items: center; justify-content: center; }
+  .screen.active { display: flex; }
+  .panel { background: var(--parchment); border: 1px solid var(--parchment-deeper); border-radius: 4px; padding: 2rem; box-shadow: 0 4px 24px var(--shadow); position: relative; max-width: 520px; width: 100%; text-align: center; }
+  .btn { font-family: 'Special Elite', monospace; padding: 1rem; border: none; cursor: pointer; text-transform: uppercase; width: 100%; margin-bottom: 0.8rem; transition: 0.2s; }
+  .btn-primary { background: var(--ink); color: var(--parchment); }
+  .btn-secondary { background: transparent; color: var(--ink); border: 1.5px solid var(--parchment-deeper); }
+  .room-code-value { font-family: 'Playfair Display', serif; font-size: 3.5rem; color: var(--gold); letter-spacing: 5px; margin: 10px 0; }
+  .player-list { list-style: none; margin: 1.5rem 0; width: 100%; text-align: left; }
+  .player-list li { padding: 12px; border-bottom: 1px solid var(--parchment-dark); display: flex; justify-content: space-between; align-items: center; font-weight: 600; }
+  .player-list span { color: var(--sepia); font-family: 'Special Elite', monospace; }
+  .settings-box { background: var(--parchment-dark); padding: 1rem; border-radius: 4px; margin-bottom: 1rem; text-align: left; }
+  .settings-box label { display: block; font-family: 'Special Elite'; font-size: 0.8rem; margin-bottom: 5px; }
+  #game-screen { justify-content: flex-start; padding: 0; }
+  .game-header { background: var(--ink); color: var(--parchment); width: 100%; padding: 1rem; display: flex; justify-content: space-between; border-bottom: 3px solid var(--gold); }
+  .timer-bar-wrap { height: 8px; background: var(--parchment-dark); width: 100%; }
+  .timer-bar { height: 100%; background: var(--gold); width: 100%; transition: width 1s linear; }
+  .answer-btn { width: 100%; padding: 1.2rem; margin-bottom: 10px; border: 1.5px solid var(--parchment-deeper); background: var(--parchment); cursor: pointer; text-align: left; font-size: 1.1rem; }
+  .answer-btn.correct { background: #d4edda !important; border-color: var(--correct) !important; }
+  .answer-btn.wrong { background: #f8d7da !important; border-color: var(--wrong) !important; }
+</style>
+</head>
+<body>
+
+<div id="home-screen" class="screen active">
+  <div class="panel">
+    <h1 style="font-family:'Playfair Display'; font-size: 3.5rem;">Historica</h1>
+    <button class="btn btn-primary" onclick="showScreen('host-setup-screen')">Host Game</button>
+    <button class="btn btn-secondary" onclick="showScreen('join-screen')">Join Game</button>
+  </div>
+</div>
+
+<div id="host-setup-screen" class="screen">
+  <div class="panel">
+    <h2>Host Configuration</h2>
+    <div class="settings-box">
+      <label>Host Name</label>
+      <input type="text" id="host-name-input" placeholder="Your Name" style="width:100%; padding:8px; margin-bottom:15px;">
+      <label>Number of Questions (Max 30)</label>
+      <input type="number" id="q-count-input" value="10" min="5" max="30" style="width:100%; padding:8px;">
+    </div>
+    <button class="btn btn-primary" onclick="createRoom()">Create Chamber</button>
+  </div>
+</div>
+
+<div id="join-screen" class="screen">
+  <div class="panel">
+    <h2>Join Session</h2>
+    <input type="text" id="join-name-input" placeholder="Your Name" style="width:100%; padding:10px; margin: 10px 0;">
+    <input type="text" id="join-code-input" placeholder="Room Code" style="width:100%; padding:10px; margin: 10px 0; text-transform:uppercase;">
+    <button class="btn btn-primary" onclick="joinRoom()">Enter Chamber</button>
+  </div>
+</div>
+
+<div id="lobby-screen" class="screen">
+  <div class="panel">
+    <p>ROOM CODE</p>
+    <div class="room-code-value" id="display-room-code">----</div>
+    <ul id="player-list" class="player-list"></ul>
+    <button id="start-btn" class="btn btn-primary" style="display:none;" onclick="startGame()">Commence Quiz</button>
+    <p id="wait-msg">Waiting for the host to begin...</p>
+  </div>
+</div>
+
+<div id="game-screen" class="screen">
+  <div class="game-header">
+    <div id="q-count-display">Q 1/10</div>
+    <div id="my-score-display">0 pts</div>
+  </div>
+  <div class="timer-bar-wrap"><div class="timer-bar" id="timer-bar"></div></div>
+  <div style="max-width:600px; width:100%; padding:2rem;">
+    <p id="q-text" style="font-size:1.6rem; font-weight:bold; margin-bottom:2rem; text-align:center;"></p>
+    <div id="answers-grid"></div>
+  </div>
+</div>
+
+<div id="leaderboard-screen" class="screen">
+  <div class="panel">
+    <h2 id="lb-title">Current Standings</h2>
+    <ul id="lb-list" class="player-list"></ul>
+    <button id="next-btn" class="btn btn-primary" style="display:none;" onclick="nextQuestion()">Next Question</button>
+    <p id="p-wait-next" style="display:none;">Waiting for host to advance...</p>
+  </div>
+</div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+  import { getDatabase, ref, set, onValue, update, get, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+  // Configuration from your provided screenshot
+  const firebaseConfig = {
+    apiKey: "AIzaSyDW-UE-a4TMRcfz3E13mLOgBtx6bywwCtE",
+    authDomain: "history-780ec.firebaseapp.com",
+    databaseURL: "https://history-780ec-default-rtdb.firebaseio.com",
+    projectId: "history-780ec"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+
+  // Question Bank (Expanded)
+  const BANK = [
+    { q: "Which Commodore forced Japan to open ports in 1853?", a: ["Matthew Perry", "John Jones", "David Farragut", "Winfield Scott"], c: 0 },
+    { q: "What was Darwin's 1859 work on evolution?", a: ["On the Origin of Species", "The Descent of Man", "Geology", "The Voyage"], c: 0 },
+    { q: "Which fort's bombardment began the Civil War?", a: ["Fort Sumter", "Fort McHenry", "Fort Knox", "Fort Lee"], c: 0 },
+    { q: "Who assassinated Abraham Lincoln?", a: ["John Wilkes Booth", "Lee Oswald", "Charles Guiteau", "Leon Czolgosz"], c: 0 },
+    { q: "Who developed the practical light bulb in 1879?", a: ["Thomas Edison", "Nikola Tesla", "Humphry Davy", "Joseph Swan"], c: 0 },
+    { q: "What year was the First Transcontinental Railroad completed?", a: ["1869", "1875", "1855", "1890"], c: 0 },
+    { q: "Who invented the telephone in 1876?", a: ["Alexander Graham Bell", "Edison", "Tesla", "Elisha Gray"], c: 0 },
+    { q: "The Statue of Liberty was a gift from which country?", a: ["France", "Great Britain", "Germany", "Italy"], c: 0 },
+    { q: "Where were the first modern Olympic Games held (1896)?", a: ["Athens", "Paris", "London", "Rome"], c: 0 },
+    { q: "Who made the first powered flight in 1903?", a: ["Wright Brothers", "Blériot", "Langley", "Curtiss"], c: 0 },
+    // Adding placeholder questions to reach your 30 limit request
+    { q: "What canal opened in 1869 connecting the Med to Red Sea?", a: ["Suez Canal", "Panama Canal", "Erie Canal", "Kiel Canal"], c: 0 },
+    { q: "Who was the 'Iron Chancellor' of unified Germany?", a: ["Otto von Bismarck", "Wilhelm I", "Metternich", "Frederick II"], c: 0 },
+    { q: "The Boer War was fought in which modern country?", a: ["South Africa", "Egypt", "India", "Australia"], c: 0 },
+    { q: "In 1888, which painter famously cut off his own ear?", a: ["Vincent van Gogh", "Gauguin", "Monet", "Degas"], c: 0 },
+    { q: "The Boxer Rebellion took place in which country?", a: ["China", "Japan", "Vietnam", "Korea"], c: 0 },
+    { q: "Who discovered Penicillin in 1928? (End of Age)", a: ["Alexander Fleming", "Pasteur", "Lister", "Koch"], c: 0 },
+    { q: "The Titanic sank in which year?", a: ["1912", "1908", "1915", "1910"], c: 0 },
+    { q: "Who wrote 'The Communist Manifesto' in 1848?", a: ["Karl Marx", "Engels", "Lenin", "Trotsky"], c: 0 },
+    { q: "Queen Victoria's reign ended in which year?", a: ["1901", "1899", "1905", "1910"], c: 0 },
+    { q: "The Meiji Restoration began in which country?", a: ["Japan", "China", "Thailand", "India"], c: 0 },
+    { q: "Who was the nurse known as the 'Lady with the Lamp'?", a: ["Florence Nightingale", "Clara Barton", "Mary Seacole", "Mother Teresa"], c: 0 },
+    { q: "The Triple Entente included Britain, France, and who?", a: ["Russia", "Italy", "Germany", "USA"], c: 0 },
+    { q: "Which empire was known as 'The Sick Man of Europe'?", a: ["Ottoman Empire", "Austro-Hungarian", "Russian", "Prussian"], c: 0 },
+    { q: "Who developed the assembly line for the Model T?", a: ["Henry Ford", "Dodge", "Chrysler", "Olds"], c: 0 },
+    { q: "What was the capital of the Confederacy?", a: ["Richmond", "Atlanta", "Charleston", "Montgomery"], c: 0 },
+    { q: "Who discovered X-rays in 1895?", a: ["Wilhelm Röntgen", "Marie Curie", "Becquerel", "Tesla"], c: 0 },
+    { q: "The Russo-Japanese War occurred in which years?", a: ["1904-1905", "1899-1900", "1910-1911", "1895-1896"], c: 0 },
+    { q: "Which explorer reached the South Pole first in 1911?", a: ["Roald Amundsen", "Robert Scott", "Shackleton", "Peary"], c: 0 },
+    { q: "Who wrote 'War and Peace'?", a: ["Leo Tolstoy", "Dostoevsky", "Chekhov", "Pushkin"], c: 0 },
+    { q: "The Spanish-American War occurred in which year?", a: ["1898", "1890", "1902", "1885"], c: 0 }
+  ];
+
+  let state = {
+    isHost: false,
+    myId: 'id_' + Math.random().toString(36).slice(2, 7),
+    roomCode: '',
+    currentQIndex: -1,
+    myScore: 0,
+    questions: []
+  };
+
+  window.showScreen = (id) => {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+  };
+
+  window.createRoom = async () => {
+    const name = document.getElementById('host-name-input').value || 'Host';
+    const numQ = Math.min(30, Math.max(5, parseInt(document.getElementById('q-count-input').value)));
+    state.roomCode = Math.random().toString(36).substring(2, 6).toUpperCase();
+    state.isHost = true;
+
+    // Randomize and truncate question set
+    const selectedQuestions = [...BANK].sort(() => Math.random() - 0.5).slice(0, numQ);
+
+    await set(ref(db, 'rooms/' + state.roomCode), {
+      status: 'lobby',
+      currentQ: -1,
+      questions: selectedQuestions,
+      players: { [state.myId]: { name, score: 0, answered: false } }
+    });
+
+    setupSync();
+    document.getElementById('display-room-code').textContent = state.roomCode;
+    document.getElementById('start-btn').style.display = 'block';
+    document.getElementById('wait-msg').style.display = 'none';
+    showScreen('lobby-screen');
+  };
+
+  window.joinRoom = async () => {
+    const code = document.getElementById('join-code-input').value.toUpperCase();
+    const name = document.getElementById('join-name-input').value || 'Player';
+    
+    const snap = await get(ref(db, `rooms/${code}`));
+    if (snap.exists()) {
+      state.roomCode = code;
+      await set(ref(db, `rooms/${code}/players/${state.myId}`), { name, score: 0, answered: false });
+      setupSync();
+      document.getElementById('display-room-code').textContent = code;
+      showScreen('lobby-screen');
+    } else { alert("Chamber not found!"); }
+  };
+
+  function setupSync() {
+    onValue(ref(db, 'rooms/' + state.roomCode), (snapshot) => {
+      const room = snapshot.val();
+      if (!room) return;
+
+      state.questions = room.questions;
+      const players = room.players || {};
+      
+      // Sort leaderboard: Highest points to lowest
+      const sortedPlayers = Object.values(players).sort((a, b) => b.score - a.score);
+
+      // Render lists
+      const html = sortedPlayers.map(p => `<li>${p.name} <span>${p.score} pts</span></li>`).join('');
+      document.getElementById('player-list').innerHTML = html;
+      document.getElementById('lb-list').innerHTML = html;
+
+      // Status Controller
+      if (room.status === 'question' && state.currentQIndex !== room.currentQ) {
+        state.currentQIndex = room.currentQ;
+        renderQuestion();
+      } else if (room.status === 'leaderboard') {
+        showScreen('leaderboard-screen');
+        if (state.isHost) {
+          document.getElementById('next-btn').style.display = 'block';
+          document.getElementById('lb-title').innerText = "Standings";
+        } else {
+          document.getElementById('p-wait-next').style.display = 'block';
+        }
+      } else if (room.status === 'final') {
+        document.getElementById('lb-title').innerText = "🏆 Final Results";
+        showScreen('leaderboard-screen');
+        if(state.isHost) document.getElementById('next-btn').style.display = 'none';
+      }
+
+      // Auto-advance logic for host
+      if (state.isHost && room.status === 'question') {
+        const everyoneAnswered = Object.values(players).every(p => p.answered === true);
+        if (everyoneAnswered) {
+          setTimeout(() => update(ref(db, `rooms/${state.roomCode}`), { status: 'leaderboard' }), 1000);
+        }
+      }
+    });
+  }
+
+  window.startGame = () => {
+    update(ref(db, `rooms/${state.roomCode}`), { status: 'question', currentQ: 0 });
+  };
+
+  window.nextQuestion = async () => {
+    const next = state.currentQIndex + 1;
+    if (next >= state.questions.length) {
+      update(ref(db, `rooms/${state.roomCode}`), { status: 'final' });
+      return;
+    }
+    
+    const snap = await get(ref(db, `rooms/${state.roomCode}/players`));
+    const players = snap.val();
+    for (let id in players) players[id].answered = false;
+
+    update(ref(db, `rooms/${state.roomCode}`), { 
+      status: 'question', 
+      currentQ: next,
+      players: players
+    });
+  };
+
+  function renderQuestion() {
+    const qData = state.questions[state.currentQIndex];
+    const correctVal = qData.a[qData.c];
+    
+    document.getElementById('q-count-display').innerText = `Q ${state.currentQIndex + 1}/${state.questions.length}`;
+    document.getElementById('q-text').innerText = qData.q;
+    
+    // Shuffle answers for UI only
+    const shuffled = [...qData.a].sort(() => Math.random() - 0.5);
+    const grid = document.getElementById('answers-grid');
+    grid.innerHTML = '';
+    
+    shuffled.forEach(ans => {
+      const btn = document.createElement('button');
+      btn.className = 'answer-btn';
+      btn.innerText = ans;
+      btn.onclick = () => {
+        const isCorrect = (ans === correctVal);
+        if (isCorrect) state.myScore += 100;
+        
+        document.querySelectorAll('.answer-btn').forEach(b => {
+          b.disabled = true;
+          if(b.innerText === correctVal) b.classList.add('correct');
+          else if(b.innerText === ans && !isCorrect) b.classList.add('wrong');
+        });
+
+        update(ref(db, `rooms/${state.roomCode}/players/${state.myId}`), { 
+          answered: true, 
+          score: state.myScore 
+        });
+        document.getElementById('my-score-display').innerText = `${state.myScore} pts`;
+      };
+      grid.appendChild(btn);
+    });
+
+    const bar = document.getElementById('timer-bar');
+    bar.style.transition = 'none'; bar.style.width = '100%';
+    setTimeout(() => { bar.style.transition = 'width 15s linear'; bar.style.width = '0%'; }, 100);
+    showScreen('game-screen');
+  }
+</script>
+</body>
+</html>
